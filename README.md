@@ -37,14 +37,14 @@ On the EPIC tables we will report counts of participants, videos, and segments, 
 | By November 7 | Freeze this proposal, load the EPIC tables, and report the first coverage counts. |
 | November 8–21 | Finish the component table, code the DROID fields, and make the figure. |
 | November 22–December 5 | Interpret the table, run the split checks, and decide on Ego4D. |
-| December 6–14 | Polish the notebook, write the report of at most six pages, and record each contribution. |
+| December 6–14 | Polish the notebook, write the report of ~6 pages, and record each contribution. |
 | December 15–16 | Prepare the eight-minute presentation. |
-| December 17, 8:30–11:30 ET | Submit the final report. |
+| December 17 | Submit the final report. |
 
 ## Team organization
 
-The group has two members. One member owns the EPIC download, preprocessing, descriptive statistics, and the figure. The other owns the DROID field coding, the metadata check, the component table, and the report draft. Both label each lab-only row as a note the person can supply or as rig hardware, and disagreements are recorded in the repository. Each member reviews the other’s section before November 21 and December 14.
+Two members - Ria and Naomi. Ria 'owns' the EPIC download, preprocessing, descriptive statistics, and the figure. Naomi is in charge of the DROID field coding, the metadata check, the component table, and the report draft. We both label each lab-only row as a note the person can supply or as rig hardware, and disagreements are recorded in the repository.
 
 ## Questions for the course staff
 
-These datasets are outside the suggested list. Is the project acceptable if the graded analysis uses the EPIC annotation tables and DROID metadata, and leaves the full robot recordings unloaded?
+Considering these datasets are outside the suggested list. Is the project acceptable if the graded analysis uses the EPIC annotation tables and DROID metadata, and leaves the full robot recordings unloaded?
