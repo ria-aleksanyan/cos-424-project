@@ -43,7 +43,7 @@ On the EPIC tables we will report counts of participants, videos, and segments, 
 
 ## Team organization
 
-Two members - Ria and Naomi. Ria 'owns' the EPIC download, preprocessing, descriptive statistics, and the figure. Naomi is in charge of the DROID field coding, the metadata check, the component table, and the report draft. We both label each lab-only row as a note the person can supply or as rig hardware, and disagreements are recorded in the repository.
+// Two members - Ria and Naomi. Ria 'owns' the EPIC download, preprocessing, descriptive statistics, and the figure. Naomi is in charge of the DROID field coding, the metadata check, the component table, and the report draft. We both label each lab-only row as a note the person can supply or as rig hardware, and disagreements are recorded in the repository.
 
 ## Questions for the course staff
 
