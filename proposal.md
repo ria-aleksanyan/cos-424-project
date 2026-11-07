@@ -7,7 +7,8 @@ Household tasks such as pouring, opening, and moving objects supply training dat
 
 To what extent does a verb labeler trained on home-kitchen narrations transfer to robot-lab instructions, and which text representation carries the transfer?
 
-Three smaller questions keep the comparison specific. On Ego4D validation narrations the labeler never trained on, how often do the leftover words name the right verb? How far does that score drop when the same labeler reads an AgiBot command? Which reading carries more of the score across, a word count or a sentence embedding?
+We narrow the down to 3 smaller questions : 
+1. On Ego4D validation narrations the labeler never trained on, how often do the leftover words name the right verb? 2. How far does that score drop when the same labeler reads an AgiBot command? 3. Which reading carries more of the score across, a word count or a sentence embedding?
 
 Both collections are treated as records of a physical object task. A home narration and a robot command are both supposed to say what the action is. Training and testing on home narrations only would show that leftover home words can name a home verb. Scoring the same frozen labelers on the robot commands measures whether a reader that learned the first can still read the second. If the score holds with the word count, shared objects are doing the labeling. If it holds only with the embedding, the actions match and the wording does not. If both fall to a rule that ignores the leftover words, the home narration is not a drop-in verb name for a robot command.
 
