@@ -22,8 +22,6 @@ We will join each verb to one sentence from the narrations file on video id and 
 
 AgiBot World Beta (Bu et al., 2025) is the lab comparison: about one million trajectories from more than 100 robots, with a written command on each action. We will use that text, not the video or the robot traces. The command has no Ego4D verb until we assign one.
 
-We will not use DROID. A home narration is a short description and a DROID line is often two actions, so a score on that pair is not readable. We will not train on EPIC-KITCHENS-100 (Damen et al., 2022). Its unseen home test is participants P18 and P32, 159 longer notes covering about 18 of 97 verb classes, so a class average on that test is not readable.
-
 An AgiBot command that names two actions is labeled with the first action only, and we will use that rule on every row. Both of us assign the verb independently, before either of us looks at a model guess. Where we agree, that verb is the test label. Where we disagree, we keep both marks and report the count.
 
 ## Methods
@@ -72,3 +70,9 @@ After the verb is removed, a home narration and a robot command are still differ
 Ambiguous rows, where two sentences are about equally close to an action, are left out of the score. Could excluding them bias the test toward easier or harder examples?
 
 If a model proposes the verb and we review only the uncertain commands, is there a risk that the proposal becomes the ground truth rather than an independent judgment?
+
+## Use of AI
+
+We used a coding assistant in Cursor while writing this proposal. For idea generation, the assistant helped state the transfer question and the comparison between a home narration and a robot command. We chose the datasets and the decision to score verb labels from text. For coding, the assistant drafted and revised the sentences in this file. No classifier has been fit. For feedback, the assistant checked whether the methods, the validation split, and the staff questions describe the same experiment. For other tasks, the assistant committed this file to the repository.
+
+We checked the dataset sentences against Grauman et al. (2022) and Bu et al. (2025): the Ego4D totals, the Forecasting Hands and Objects split, and the AgiBot trajectory count. We read each methods sentence against the procedure we will run. One limitation is that the count of 37 shared verbs came from the assistant's earlier comparison and has not yet been recomputed on the downloaded files. Another is that the assistant cannot see the withheld Ego4D test labels, so the score uses the public validation split.
