@@ -42,7 +42,7 @@ We will score all three programs on the unambiguous Ego4D validation narrations,
 | --- | --- |
 | By November 7 | Freeze this proposal, load the Ego4D tables, and freeze the narration join. |
 | November 8–21 | Fit the word-count model and both logistic regressions, embed the home narrations, and score the validation set. Draw the AgiBot sample and write the labeling rules. |
-| November 22–December 5 | Both partners label the AgiBot sample, score the three frozen programs on it, and fill the metric table. |
+| November 22–December 5 | we both label the AgiBot sample, score the three frozen programs on it, and fill the metric table. |
 | December 6–19 | Interpret the drops, polish the notebook, write the report of ~6 pages, and record each contribution. |
 | December 20–21 | Prepare the eight-minute presentation. |
 | December 22 | Submit the final report. |
