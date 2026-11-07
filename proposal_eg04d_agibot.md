@@ -36,8 +36,6 @@ The third program is a rule, not a trained model. If a verb word is still in the
 
 We will score all three programs on the unambiguous Ego4D validation narrations, with the two participant-overlap scores reported beside that result. We will then run the same frozen programs on the agreed AgiBot labels. A verb that never appears in those labels will not enter the average. For each program on each pile we will report accuracy and macro-F1. Macro-F1 is the average of the per-verb scores, so a frequent verb cannot hide a program that misses the others. The drop from the home macro-F1 to the robot macro-F1 is how far that reading travels. The highest robot macro-F1 that still beats the rule is the reading that carries the transfer.
 
-Code will live in a Python module called from one Jupyter notebook. The notebook will show the joined counts, the three programs, the metric table, and one figure of home macro-F1 against robot macro-F1.
-
 ## Timeline
 
 | Dates | Work |
@@ -51,7 +49,7 @@ Code will live in a Python module called from one Jupyter notebook. The notebook
 
 ## Team organization
 
-Two members, Ria and Naomi. Ria owns the Ego4D download, the narration join, the verb stripping, the word-count logistic regression, and the validation scores. Naomi owns the frozen embedding, the second logistic regression, the AgiBot sample, and the report draft. We both label every robot command, and disagreements are recorded in the repository. We both read the metric table before the interpretation is written.
+Two members, Ria and Naomi. Ria owns the Ego4D download, the verb stripping, the word-count logistic regression, and the report draft. Naomi owns the narration join, the frozen embedding, the second logistic regression, and the AgiBot sample. We both label every robot command, and disagreements are recorded in the repository. We both read the metric table before the interpretation is written.
 
 ## Questions for the course staff
 
