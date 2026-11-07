@@ -1,4 +1,3 @@
-# What a Home Narration Carries into a Robot Instruction
 
 ## Abstract
 
@@ -49,7 +48,8 @@ We will score all three programs on the unambiguous Ego4D validation narrations,
 
 ## Team organization
 
-Ria -  is in charge of the Ego4D download, the verb stripping, the word-count logistic regression, and the report draft. Naomi - is in charge of the narration join, the frozen embedding, the second logistic regression, and the AgiBot sample. We both* label every robot command, and disagreements are recorded in the repository. We both read the metric table before the interpretation is written.
+Ria -  is in charge of the Ego4D download, the verb stripping, the word-count logistic regression, and the report draft. 
+Naomi - is in charge of the narration join, the frozen embedding, the second logistic regression, and the AgiBot sample. We both* label every robot command, and disagreements are recorded in the repository. We both read the metric table before the interpretation is written.
 
 ## Questions for the course staff
 
