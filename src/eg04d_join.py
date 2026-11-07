@@ -550,18 +550,291 @@ def counts_table(counts: JoinCounts) -> pd.DataFrame:
     )
 
 
-def plot_verb_frequency(notes: pd.DataFrame, top_n: int = 25):
-    """Bar chart of the most common verbs in a joined table."""
+def plot_verb_frequency(notes: pd.DataFrame, top_n: int = 25, title: str | None = None):
+    """Bar chart of verbs in a joined table."""
     import matplotlib.pyplot as plt
 
     freq = verb_frequency(notes).head(top_n).iloc[::-1]
-    fig, ax = plt.subplots(figsize=(8, 6))
+    fig, ax = plt.subplots(figsize=(8, 7))
     freq.plot.barh(ax=ax)
     ax.set_xlabel("Actions")
     ax.set_ylabel("")
-    ax.set_title("Most common verbs after the narration join")
+    ax.set_title(title or "Verbs after the narration join")
     fig.tight_layout()
     return fig
+
+
+def head_verb(label: object) -> str:
+    """The taxonomy head: the word before the parenthesis."""
+    words = tokenize(str(label).split("_(")[0])
+    return words[0] if words else ""
+
+
+def without_shared_videos(
+    notes: pd.DataFrame,
+    data_dir: Path | str,
+) -> tuple[pd.DataFrame, JoinCounts, pd.Series]:
+    """Drop every video that appears in both the train and validation files.
+
+    Participant overlap is recomputed on the rows that remain. The returned
+    counts use the collapsed actions on the videos that were kept.
+    """
+    paths = resolve_annotation_paths(data_dir)
+    train_actions = load_actions(paths.actions_train, "train")
+    val_actions = load_actions(paths.actions_val, "val")
+    both = set(train_actions["video_uid"]) & set(val_actions["video_uid"])
+    actions = pd.concat([train_actions, val_actions], ignore_index=True)
+    actions = actions.loc[~actions["video_uid"].isin(both)].reset_index(drop=True)
+    cleaned = notes.loc[~notes["video_uid"].isin(both)].copy()
+    train_ids = set(cleaned.loc[cleaned["split"] == "train", "fb_participant_id"].dropna())
+    cleaned["participant_in_train"] = cleaned["fb_participant_id"].isin(train_ids)
+    kept_train = set(cleaned.loc[cleaned["split"] == "train", "video_uid"])
+    kept_val = set(cleaned.loc[cleaned["split"] == "val", "video_uid"])
+    report = pd.Series(
+        {
+            "videos_in_both_files": int(len(both)),
+            "videos_removed": int(len(both)),
+            "train_videos_remaining": int(len(kept_train)),
+            "val_videos_remaining": int(len(kept_val)),
+            "videos_still_in_both": int(len(kept_train & kept_val)),
+        },
+        name="value",
+    )
+    return cleaned.reset_index(drop=True), join_counts(actions, cleaned), report
+
+
+def shared_verb_rows(notes: pd.DataFrame, shared: list[str] | set[str]) -> pd.DataFrame:
+    """Unambiguous rows whose taxonomy head is one of the shared verbs.
+
+    The ``verb`` column is replaced with that head, so later counts use the
+    37 names rather than the full taxonomy string.
+    """
+    shared_set = {str(verb) for verb in shared}
+    scoring = scoring_rows(notes)
+    if scoring.empty:
+        return scoring
+    heads = scoring["verb"].map(head_verb)
+    kept = scoring.loc[heads.isin(shared_set)].copy()
+    kept["verb"] = heads.loc[heads.isin(shared_set)].to_numpy()
+    return kept.reset_index(drop=True)
+
+
+def shared_verb_frequency(notes: pd.DataFrame, shared: list[str] | set[str]) -> pd.Series:
+    """Count the shared verbs, including a shared verb that has no remaining rows."""
+    order = [str(verb) for verb in shared]
+    rows = shared_verb_rows(notes, order)
+    if rows.empty:
+        counts = pd.Series(0, index=order, dtype="int64")
+    else:
+        counts = rows["verb"].value_counts().reindex(order, fill_value=0).astype("int64")
+    counts = counts.sort_values(ascending=False)
+    counts.name = "actions"
+    return counts
+
+
+def plot_shared_verbs(notes: pd.DataFrame, shared: list[str] | set[str]):
+    """Bar chart of the shared verbs only."""
+    import matplotlib.pyplot as plt
+
+    freq = shared_verb_frequency(notes, shared).iloc[::-1]
+    fig, ax = plt.subplots(figsize=(8, 8))
+    freq.plot.barh(ax=ax)
+    ax.set_xlabel("Actions")
+    ax.set_ylabel("")
+    ax.set_title("37 shared verbs in the leakage-free scoring set")
+    fig.tight_layout()
+    return fig
+
+
+def _hand_label_paths(task_dir: Path) -> list[Path]:
+    candidates = [
+        task_dir / "hand_labels.csv",
+        task_dir.parent / "hand_labels.csv",
+        Path("data") / "agibot_hand_labels.csv",
+    ]
+    return [path for path in candidates if path.is_file()]
+
+
+def hand_label_table(task_dir: Path | str) -> pd.DataFrame:
+    """Commands waiting for two independent verb labels.
+
+    No verb is guessed from the skill name or from the words in the command.
+    If a hand-label file is present, its ``ria_verb`` and ``naomi_verb``
+    columns are attached on ``task_id``, ``episode_id``, and ``action_text``.
+    Otherwise those columns are blank. ``agreed_verb`` is filled only where
+    both labels are present and equal.
+    """
+    commands = pd.DataFrame(_agibot_actions(task_dir))
+    blank = ["ria_verb", "naomi_verb", "agreed_verb"]
+    if commands.empty:
+        return pd.DataFrame(columns=["task_id", "episode_id", "action_text", *blank])
+    commands = commands.loc[:, ["task_id", "episode_id", "action_text"]].copy()
+    for column in blank:
+        commands[column] = ""
+    label_files = _hand_label_paths(Path(task_dir))
+    if not label_files:
+        return commands
+    labels = pd.read_csv(label_files[0], dtype=str).fillna("")
+    needed = {"task_id", "episode_id", "action_text", "ria_verb", "naomi_verb"}
+    if not needed.issubset(labels.columns):
+        return commands
+    labels = labels.loc[:, ["task_id", "episode_id", "action_text", "ria_verb", "naomi_verb"]]
+    commands = commands.drop(columns=["ria_verb", "naomi_verb"]).merge(
+        labels,
+        on=["task_id", "episode_id", "action_text"],
+        how="left",
+    )
+    commands["ria_verb"] = commands["ria_verb"].fillna("")
+    commands["naomi_verb"] = commands["naomi_verb"].fillna("")
+    both = commands["ria_verb"].str.len().gt(0) & commands["naomi_verb"].str.len().gt(0)
+    same = commands["ria_verb"].str.lower().eq(commands["naomi_verb"].str.lower())
+    commands["agreed_verb"] = ""
+    commands.loc[both & same, "agreed_verb"] = commands.loc[both & same, "ria_verb"].str.lower()
+    return commands
+
+
+def hand_label_counts(task_dir: Path | str) -> pd.Series:
+    """How many commands have real hand labels, and how many are still blank."""
+    table = hand_label_table(task_dir)
+    label_file = _hand_label_paths(Path(task_dir))
+    if table.empty:
+        both = agreed = disagree = 0
+        files = 0
+    else:
+        both_mask = table["ria_verb"].str.len().gt(0) & table["naomi_verb"].str.len().gt(0)
+        both = int(both_mask.sum())
+        agreed = int(table["agreed_verb"].str.len().gt(0).sum())
+        disagree = both - agreed
+        files = int(table["task_id"].nunique())
+    return pd.Series(
+        {
+            "task_files": files,
+            "command_rows": int(len(table)),
+            "hand_label_file": str(label_file[0]) if label_file else "none",
+            "rows_labeled_by_both": both,
+            "agreements": agreed,
+            "disagreements": disagree,
+            "rows_still_unlabeled": int(len(table) - both),
+        },
+        name="value",
+    )
+
+
+def hand_label_examples(task_dir: Path | str, n: int = 8) -> pd.DataFrame:
+    """The first commands, with the hand-label columns blank when no file exists."""
+    columns = ["task_id", "action_text", "ria_verb", "naomi_verb", "agreed_verb"]
+    table = hand_label_table(task_dir)
+    if table.empty:
+        return pd.DataFrame(columns=columns)
+    return table.loc[:, columns].head(n).reset_index(drop=True)
+
+
+def _metrics(y_true: pd.Series, y_pred: object) -> tuple[float, float]:
+    from sklearn.metrics import accuracy_score, f1_score
+
+    present = sorted(set(y_true.astype(str)))
+    if len(y_true) == 0 or not present:
+        return float("nan"), float("nan")
+    return (
+        float(accuracy_score(y_true, y_pred)),
+        float(f1_score(y_true, y_pred, average="macro", labels=present, zero_division=0)),
+    )
+
+
+def fit_verb_labelers(
+    notes: pd.DataFrame,
+    shared: list[str] | set[str],
+) -> tuple[pd.Series, pd.DataFrame]:
+    """Fit the three labelers on the shared-verb training rows and score validation.
+
+    The word-count model is TF-IDF unigrams and bigrams plus logistic regression.
+    The embedding model is frozen all-MiniLM-L6-v2 plus a second logistic
+    regression. The rule guesses a shared verb only when exactly one of those
+    verbs is still written in the leftover; otherwise it guesses the most
+    common of the shared verbs in training. Put is not treated as a special
+    case, because put is not in the shared list.
+    """
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    from sklearn.linear_model import LogisticRegression
+    from sentence_transformers import SentenceTransformer
+
+    shared_list = [str(verb) for verb in shared]
+    frame = shared_verb_rows(notes, shared_list)
+    train = frame.loc[frame["split"] == "train"].reset_index(drop=True)
+    val = frame.loc[frame["split"] == "val"].reset_index(drop=True)
+    if train.empty or val.empty:
+        raise ValueError("The shared-verb split has no training or no validation rows.")
+    floor = str(train["verb"].value_counts().idxmax())
+    surfaces: dict[str, set[str]] = {}
+    for verb in shared_list:
+        for form in verb_surfaces(verb):
+            surfaces.setdefault(form, set()).add(verb)
+
+    def rule_one(text: object) -> str:
+        matched: set[str] = set()
+        for word in tokenize(text):
+            matched |= surfaces.get(word, set())
+        if len(matched) == 1:
+            return next(iter(matched))
+        return floor
+
+    vectorizer = TfidfVectorizer(ngram_range=(1, 2), min_df=2)
+    x_train = vectorizer.fit_transform(train["leftover"].fillna(""))
+    x_val = vectorizer.transform(val["leftover"].fillna(""))
+    word_model = LogisticRegression(max_iter=400, random_state=0)
+    word_model.fit(x_train, train["verb"])
+    word_pred = word_model.predict(x_val)
+
+    encoder = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+    emb_train = encoder.encode(
+        train["leftover"].fillna("").tolist(),
+        batch_size=128,
+        show_progress_bar=False,
+    )
+    emb_val = encoder.encode(
+        val["leftover"].fillna("").tolist(),
+        batch_size=128,
+        show_progress_bar=False,
+    )
+    embedding_model = LogisticRegression(max_iter=400, random_state=0)
+    embedding_model.fit(emb_train, train["verb"])
+    embedding_pred = embedding_model.predict(emb_val)
+    rule_pred = val["leftover"].map(rule_one).to_numpy()
+
+    masks = {
+        "all validation rows": pd.Series(True, index=val.index),
+        "participant overlap removed": ~val["participant_in_train"].astype(bool),
+    }
+    predictions = {
+        "word count": word_pred,
+        "sentence embedding": embedding_pred,
+        "rule": rule_pred,
+    }
+    rows: list[dict] = []
+    for program, pred in predictions.items():
+        for subset, mask in masks.items():
+            accuracy, macro_f1 = _metrics(val.loc[mask, "verb"], pred[mask.to_numpy()])
+            rows.append(
+                {
+                    "program": program,
+                    "rows": subset,
+                    "n": int(mask.sum()),
+                    "accuracy": accuracy,
+                    "macro_f1": macro_f1,
+                }
+            )
+    summary = pd.Series(
+        {
+            "shared_verbs": int(len(shared_list)),
+            "train_rows": int(len(train)),
+            "val_rows": int(len(val)),
+            "floor_verb": floor,
+            "verbs_in_validation": int(val["verb"].nunique()),
+        },
+        name="value",
+    )
+    scores = pd.DataFrame(rows)
+    return summary, scores
 
 
 def head_lemmas(labels: object) -> set[str]:
