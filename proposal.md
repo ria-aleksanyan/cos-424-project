@@ -1,14 +1,14 @@
-# What a Home Narration Carries into a Robot Instruction
 
 ## Abstract
 
-Household tasks such as pouring, opening, and moving objects supply training data for egocentric vision and robot learning, but the language that names those tasks is written in different ways. Ego4D is filmed by people wearing a camera during ordinary activity, and the Forecasting Hands and Objects release stores a verb and a noun for each clip, and the sentence text lives in a separate narrations file. AgiBot World Beta records manipulation on a robot and stores a written command for each action. This project asks to what extent a verb labeler trained on the home narrations still names the verb on a robot command, and which reading of the leftover words carries that transfer. We will remove the verb from every sentence before a program sees it, so the labeler cannot copy the answer. We will answer with three programs, scored first on the Ego4D validation narrations and then on a hand-labeled sample of AgiBot commands.
+Household tasks such as pouring, opening, and moving objects supply training data for egocentric vision and robot learning, but the language ( aka annotations) that names those tasks is written in different ways. Ego4D is filmed by people wearing a camera during ordinary activity, and the Forecasting Hands and Objects release stores a verb and a noun for each clip, and the sentence text lives in a separate narrations file. AgiBot World Beta records manipulation on a robot and stores a written command for each action. This project asks to what extent a verb labeler trained on the home narrations still names the verb on a robot command, and which reading of the leftover words carries that transfer. We will remove the verb from every sentence before a program sees it, so the labeler cannot copy the answer. We will answer with three programs, scored first on the Ego4D validation narrations and then on a hand-labeled sample of AgiBot commands.
 
 ## Research questions
 
 To what extent does a verb labeler trained on home-kitchen narrations transfer to robot-lab instructions, and which text representation carries the transfer?
 
-Three smaller questions keep the comparison specific. On Ego4D validation narrations the labeler never trained on, how often do the leftover words name the right verb? How far does that score drop when the same labeler reads an AgiBot command? Which reading carries more of the score across, a word count or a sentence embedding?
+We narrow the down to 3 smaller questions : 
+1. On Ego4D validation narrations the labeler never trained on, how often do the leftover words name the right verb? 2. How far does that score drop when the same labeler reads an AgiBot command? 3. Which reading carries more of the score across, a word count or a sentence embedding?
 
 Both collections are treated as records of a physical object task. A home narration and a robot command are both supposed to say what the action is. Training and testing on home narrations only would show that leftover home words can name a home verb. Scoring the same frozen labelers on the robot commands measures whether a reader that learned the first can still read the second. If the score holds with the word count, shared objects are doing the labeling. If it holds only with the embedding, the actions match and the wording does not. If both fall to a rule that ignores the leftover words, the home narration is not a drop-in verb name for a robot command.
 
@@ -49,7 +49,8 @@ We will score all three programs on the unambiguous Ego4D validation narrations,
 
 ## Team organization
 
-Ria -  is in charge of the Ego4D download, the verb stripping, the word-count logistic regression, and the report draft. Naomi - is in charge of the narration join, the frozen embedding, the second logistic regression, and the AgiBot sample. We both* label every robot command, and disagreements are recorded in the repository. We both read the metric table before the interpretation is written.
+Ria -  is in charge of the Ego4D download, the verb stripping, the word-count logistic regression, and the report draft. 
+Naomi - is in charge of the narration join, the frozen embedding, the second logistic regression, and the AgiBot sample. We both* label every robot command, and disagreements are recorded in the repository. We both read the metric table before the interpretation is written.
 
 ## Questions for the course staff
 
