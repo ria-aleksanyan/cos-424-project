@@ -406,3 +406,171 @@ def build_joined_table(
     notes = join_actions(actions, load_narrations(paths.narrations))
     notes = attach_participants(notes, load_participants(paths.manifest))
     return notes, join_counts(actions, notes)
+
+
+def descriptive_statistics(notes: pd.DataFrame) -> pd.Series:
+    """Summarize the joined table: size, videos, people, verbs, leftover length."""
+    if notes.empty:
+        return pd.Series(
+            {
+                "joined_rows": 0,
+                "scoring_rows": 0,
+                "videos": 0,
+                "participants": 0,
+                "verbs": 0,
+                "train_rows": 0,
+                "val_rows": 0,
+                "median_leftover_words": 0.0,
+                "mean_leftover_words": 0.0,
+            },
+            name="value",
+        )
+    scoring = scoring_rows(notes)
+    participants = (
+        notes["fb_participant_id"].nunique(dropna=True)
+        if "fb_participant_id" in notes
+        else 0
+    )
+    return pd.Series(
+        {
+            "joined_rows": int(len(notes)),
+            "scoring_rows": int(len(scoring)),
+            "videos": int(notes["video_uid"].nunique()),
+            "participants": int(participants),
+            "verbs": int(scoring["verb"].nunique()) if not scoring.empty else 0,
+            "train_rows": int((notes["split"] == "train").sum()),
+            "val_rows": int((notes["split"] == "val").sum()),
+            "median_leftover_words": float(scoring["n_leftover"].median())
+            if not scoring.empty
+            else 0.0,
+            "mean_leftover_words": float(scoring["n_leftover"].mean())
+            if not scoring.empty
+            else 0.0,
+        },
+        name="value",
+    )
+
+
+def verb_frequency(notes: pd.DataFrame) -> pd.Series:
+    """Count joined rows per verb label, most common first."""
+    if notes.empty or "verb" not in notes.columns:
+        return pd.Series(dtype="int64", name="actions")
+    counts = notes["verb"].value_counts()
+    counts.name = "actions"
+    return counts
+
+
+def narrations_per_video(narrations: pd.DataFrame) -> pd.Series:
+    """Count narration sentences in each video."""
+    if narrations.empty:
+        return pd.Series(dtype="int64", name="narrations")
+    counts = narrations.groupby("video_uid", sort=False).size()
+    counts.name = "narrations"
+    return counts.sort_values(ascending=False)
+
+
+def narration_video_summary(per_video: pd.Series) -> pd.Series:
+    """How many sentences the narration file has, and how they spread across videos."""
+    if per_video.empty:
+        return pd.Series(
+            {
+                "videos": 0,
+                "narration_sentences": 0,
+                "median_per_video": 0.0,
+                "max_per_video": 0,
+            },
+            name="value",
+        )
+    return pd.Series(
+        {
+            "videos": int(per_video.shape[0]),
+            "narration_sentences": int(per_video.sum()),
+            "median_per_video": float(per_video.median()),
+            "max_per_video": int(per_video.max()),
+        },
+        name="value",
+    )
+
+
+def preprocessing_summary(notes: pd.DataFrame) -> pd.Series:
+    """Report the strip and the ambiguous-join filter on the joined table."""
+    if notes.empty:
+        return pd.Series(
+            {
+                "rows_with_narration": 0,
+                "ambiguous_rows": 0,
+                "rows_kept_for_scoring": 0,
+                "verb_still_in_leftover": 0,
+                "empty_leftovers": 0,
+                "median_leftover_words": 0.0,
+            },
+            name="value",
+        )
+    return pd.Series(
+        {
+            "rows_with_narration": int(len(notes)),
+            "ambiguous_rows": int(notes["ambiguous"].sum()),
+            "rows_kept_for_scoring": int((~notes["ambiguous"]).sum()),
+            "verb_still_in_leftover": int(notes["verb_remains"].sum()),
+            "empty_leftovers": int((notes["n_leftover"] == 0).sum()),
+            "median_leftover_words": float(notes["n_leftover"].median()),
+        },
+        name="value",
+    )
+
+
+def preprocessing_examples(notes: pd.DataFrame, n: int = 8) -> pd.DataFrame:
+    """Show the verb, the sentence after the camera-wearer tag is removed, and the leftover."""
+    columns = ["split", "verb", "narration", "leftover", "verb_remains", "ambiguous"]
+    if notes.empty:
+        return pd.DataFrame(columns=columns)
+    return notes.loc[:, columns].head(n).reset_index(drop=True)
+
+
+def counts_table(counts: JoinCounts) -> pd.DataFrame:
+    """The four join counts as a one-column table."""
+    return pd.DataFrame(
+        {
+            "count": [
+                counts.total_rows,
+                counts.rows_surviving_join,
+                counts.ambiguous_rows_dropped,
+                counts.val_participant_in_train,
+            ]
+        },
+        index=[
+            "collapsed actions",
+            "rows surviving the join",
+            "ambiguous rows dropped",
+            "validation rows whose participant is also in training",
+        ],
+    )
+
+
+def plot_verb_frequency(notes: pd.DataFrame, top_n: int = 25):
+    """Bar chart of the most common verbs in a joined table."""
+    import matplotlib.pyplot as plt
+
+    freq = verb_frequency(notes).head(top_n).iloc[::-1]
+    fig, ax = plt.subplots(figsize=(8, 6))
+    freq.plot.barh(ax=ax)
+    ax.set_xlabel("Actions")
+    ax.set_ylabel("")
+    ax.set_title("Most common verbs after the narration join")
+    fig.tight_layout()
+    return fig
+
+
+def plot_narrations_per_video(per_video: pd.Series):
+    """Histogram of narration sentences per video."""
+    import matplotlib.pyplot as plt
+
+    fig, ax = plt.subplots(figsize=(8, 4.2))
+    if not per_video.empty:
+        bins = min(30, max(int(per_video.nunique()), 1))
+        ax.hist(per_video.to_numpy(), bins=bins, edgecolor="white")
+    ax.set_xlabel("Narration sentences")
+    ax.set_ylabel("Videos")
+    ax.set_title("Narrations per video")
+    fig.tight_layout()
+    return fig
