@@ -68,7 +68,7 @@ _IRREGULAR = {
 
 _ACTIONS_TRAIN = "fho_lta_train.json"
 _ACTIONS_VAL = "fho_lta_val.json"
-_NARRATIONS = "narrations.json"
+_NARRATIONS = ("narrations.json", "narration.json")
 _MANIFEST = "ego4d.json"
 
 _OFFICIAL_DOWNLOAD = (
@@ -326,9 +326,12 @@ def join_counts(actions: pd.DataFrame, notes: pd.DataFrame) -> JoinCounts:
     )
 
 
-def _first(root: Path, name: str) -> Path | None:
-    matches = sorted(root.rglob(name))
-    return matches[0] if matches else None
+def _first(root: Path, *names: str) -> Path | None:
+    for name in names:
+        matches = sorted(root.rglob(name))
+        if matches:
+            return matches[0]
+    return None
 
 
 def resolve_annotation_paths(data_dir: Path | str) -> AnnotationPaths:
@@ -336,14 +339,14 @@ def resolve_annotation_paths(data_dir: Path | str) -> AnnotationPaths:
     root = Path(data_dir)
     train = _first(root, _ACTIONS_TRAIN)
     val = _first(root, _ACTIONS_VAL)
-    narrations = _first(root, _NARRATIONS)
+    narrations = _first(root, *_NARRATIONS)
     manifest = _first(root, _MANIFEST)
     missing = [
         name
         for name, path in (
             (_ACTIONS_TRAIN, train),
             (_ACTIONS_VAL, val),
-            (_NARRATIONS, narrations),
+            ("narration.json", narrations),
             (_MANIFEST, manifest),
         )
         if path is None
@@ -559,6 +562,160 @@ def plot_verb_frequency(notes: pd.DataFrame, top_n: int = 25):
     ax.set_title("Most common verbs after the narration join")
     fig.tight_layout()
     return fig
+
+
+def head_lemmas(labels: object) -> set[str]:
+    """The word before the parenthesis in each taxonomy label.
+
+    ``take_(pick,_grab,_get)`` contributes take. The words in parentheses
+    are synonyms, not separate classes.
+    """
+    heads: set[str] = set()
+    for label in labels if isinstance(labels, (list, tuple)) else []:
+        words = tokenize(str(label).split("_(")[0])
+        if words:
+            heads.add(words[0])
+    return heads
+
+
+def _taxonomy_verbs(data_dir: Path | str) -> list[str]:
+    path = _first(Path(data_dir), "fho_lta_taxonomy.json")
+    if path is None:
+        raise FileNotFoundError(f"{data_dir} has no fho_lta_taxonomy.json.")
+    payload = _read_json(path)
+    if not isinstance(payload, dict) or "verbs" not in payload:
+        raise ValueError(f"{path} has no verb list.")
+    return list(payload["verbs"])
+
+
+def _agibot_actions(task_dir: Path | str) -> list[dict]:
+    root = Path(task_dir)
+    rows: list[dict] = []
+    for path in sorted(root.glob("*.json")):
+        payload = _read_json(path)
+        if not isinstance(payload, list):
+            continue
+        task_id = path.stem.removeprefix("task_")
+        for episode in payload:
+            if not isinstance(episode, dict):
+                continue
+            info = episode.get("label_info") or episode.get("lable_info") or {}
+            actions = info.get("action_config") or []
+            for action in actions:
+                if not isinstance(action, dict):
+                    continue
+                rows.append(
+                    {
+                        "task_id": task_id,
+                        "episode_id": episode.get("episode_id"),
+                        "task_name": episode.get("task_name", ""),
+                        "skill": str(action.get("skill") or "").strip(),
+                        "action_text": str(action.get("action_text") or "").strip(),
+                    }
+                )
+    return rows
+
+
+def shared_verbs(ego4d_dir: Path | str, task_dir: Path | str) -> list[str]:
+    """Ego4D head verbs whose name is also an AgiBot skill.
+
+    This is the frozen shared list: the head word of a taxonomy label, matched
+    to a skill name, with no synonym expansion.
+    """
+    heads = head_lemmas(_taxonomy_verbs(ego4d_dir))
+    skills = {row["skill"].lower() for row in _agibot_actions(task_dir) if row["skill"]}
+    return sorted(heads & skills)
+
+
+def load_agibot_commands(
+    task_dir: Path | str,
+    shared: list[str] | set[str],
+) -> pd.DataFrame:
+    """One row per AgiBot action command, with the verb removed for labeling.
+
+    ``shared_verb`` is the skill when that skill is one of the shared verbs.
+    Otherwise it is the single shared verb whose form appears in the sentence.
+    A sentence that matches several shared verbs, or none, is left unmapped.
+    """
+    shared_set = {str(verb).lower() for verb in shared}
+    surfaces: dict[str, set[str]] = {}
+    for verb in shared_set:
+        for form in verb_surfaces(verb):
+            surfaces.setdefault(form, set()).add(verb)
+    rows: list[dict] = []
+    for action in _agibot_actions(task_dir):
+        skill = action["skill"].lower()
+        tokens = tokenize(action["action_text"])
+        matched: set[str] = set()
+        for word in tokens:
+            matched |= surfaces.get(word, set())
+        if skill in shared_set:
+            mapped = skill
+        elif len(matched) == 1:
+            mapped = next(iter(matched))
+        else:
+            mapped = ""
+        banned = verb_surfaces(skill) if skill else set()
+        for verb in matched:
+            banned |= verb_surfaces(verb)
+        if mapped:
+            banned |= verb_surfaces(mapped)
+        leftover = [word for word in tokens if word not in banned]
+        leftover_text = " ".join(leftover)
+        rows.append(
+            {
+                **action,
+                "shared_verb": mapped,
+                "leftover": leftover_text,
+                "verb_remains": bool(mapped) and verb_remains(leftover_text, mapped),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def agibot_counts(commands: pd.DataFrame, shared: list[str] | set[str]) -> pd.Series:
+    """How many commands were extracted, and how many map onto the shared verbs."""
+    if commands.empty:
+        mapped = commands
+        n_mapped = 0
+        n_verbs = 0
+        n_files = 0
+        still = 0
+    else:
+        mapped_mask = commands["shared_verb"].astype(str).ne("")
+        mapped = commands.loc[mapped_mask]
+        n_mapped = int(mapped_mask.sum())
+        n_verbs = int(mapped["shared_verb"].nunique())
+        n_files = int(commands["task_id"].nunique())
+        still = int(commands["verb_remains"].sum())
+    return pd.Series(
+        {
+            "task_files": n_files,
+            "command_rows": int(len(commands)),
+            "shared_verb_list": int(len(set(shared))),
+            "commands_mapped": n_mapped,
+            "commands_unmapped": int(len(commands) - n_mapped),
+            "verbs_with_a_command": n_verbs,
+            "verb_still_in_leftover": still,
+        },
+        name="value",
+    )
+
+
+def agibot_examples(commands: pd.DataFrame, n: int = 8) -> pd.DataFrame:
+    """Show the command, the leftover, and the shared verb it mapped to."""
+    columns = ["task_id", "skill", "action_text", "leftover", "shared_verb", "verb_remains"]
+    if commands.empty:
+        return pd.DataFrame(columns=columns)
+    return commands.loc[:, columns].head(n).reset_index(drop=True)
+
+
+def agibot_plot_frame(commands: pd.DataFrame) -> pd.DataFrame:
+    """Mapped commands in the column shape used by ``plot_verb_frequency``."""
+    if commands.empty:
+        return pd.DataFrame(columns=["verb"])
+    mapped = commands.loc[commands["shared_verb"].astype(str).ne(""), ["shared_verb"]]
+    return mapped.rename(columns={"shared_verb": "verb"}).reset_index(drop=True)
 
 
 def plot_narrations_per_video(per_video: pd.Series):

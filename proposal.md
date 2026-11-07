@@ -72,7 +72,7 @@ If a model proposes the verb and we review only the uncertain commands, is there
 
 ## Use of AI
 
-For feedback, we used chatgpt to check our proposal and look for potential problems and inconsistencies within the methods, the validation split, and the choice of datasets. Furthermore, chatgpt was used to help talk through potential solutions to said problems, everything from brainstorming how to refine the main question to whether or not the pipeline is feasible. 
+For idea generation, we used ChatGPT to brainstorm how to refine the main question and to talk through whether the pipeline is feasible. For feedback, we used ChatGPT to check the proposal and look for problems and inconsistencies in the methods, the validation split, and the choice of datasets, and to talk through possible solutions. For coding, an AI assistant helped write `src/eg04d_join.py` and `analysis.ipynb`. For other tasks, it helped draft the AgiBot download steps and look up dataset documentation.
 
-Additionally, ai was used to help write code for eg04d.py file
+We checked those replies against the official Ego4D pages and against the files on disk. The shared-verb list was recomputed from the Ego4D taxonomy heads and the AgiBot skill names. The narration join was run, and the notebook counts were read from that run. An AgiBot task file was opened to confirm that `action_text` holds a command sentence. The model could not fetch the licensed Ego4D release, so it could not show that a public copy is byte-for-byte the official one. A dataset card said the command text was still missing, but the downloaded JSON contained it. Some suggested commands failed because the installed library no longer used that module path. File paths, counts, and license rules had to be checked in the files and on the site rather than taken from the reply.
 
