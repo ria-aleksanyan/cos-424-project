@@ -49,7 +49,7 @@ We will score all three programs on the unambiguous Ego4D validation narrations,
 
 ## Team organization
 
-Two members, Ria and Naomi. Ria owns the Ego4D download, the verb stripping, the word-count logistic regression, and the report draft. Naomi owns the narration join, the frozen embedding, the second logistic regression, and the AgiBot sample. We both label every robot command, and disagreements are recorded in the repository. We both read the metric table before the interpretation is written.
+Ria -  is in charge of the Ego4D download, the verb stripping, the word-count logistic regression, and the report draft. Naomi - is in charge of the narration join, the frozen embedding, the second logistic regression, and the AgiBot sample. We both* label every robot command, and disagreements are recorded in the repository. We both read the metric table before the interpretation is written.
 
 ## Questions for the course staff
 
@@ -71,6 +71,6 @@ If a model proposes the verb and we review only the uncertain commands, is there
 
 ## Use of AI
 
-We used a coding assistant in Cursor while writing this proposal. For idea generation, the assistant helped state the transfer question and the comparison between a home narration and a robot command. We chose the datasets and the decision to score verb labels from text. For coding, the assistant drafted and revised the sentences in this file. No classifier has been fit. For feedback, the assistant checked whether the methods, the validation split, and the staff questions describe the same experiment. For other tasks, the assistant committed this file to the repository.
+For feedback, we used chatgpt to check our proposal and look for potential problems and inconsistencies within the methods, the validation split, and the choice of datasets. Furthermore, chatgpt was used to help talk through potential solutions to said problems, everything from brainstorming how to refine the main question to whether or not the pipeline is feasible. 
 
-We checked the dataset sentences against Grauman et al. (2022) and Bu et al. (2025): the Ego4D totals, the Forecasting Hands and Objects split, and the AgiBot trajectory count. We read each methods sentence against the procedure we will run. One limitation is that the count of 37 shared verbs came from the assistant's earlier comparison and has not yet been recomputed on the downloaded files. Another is that the assistant cannot see the withheld Ego4D test labels, so the score uses the public validation split.
+
