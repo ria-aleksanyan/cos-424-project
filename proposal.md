@@ -74,4 +74,5 @@ If a model proposes the verb and we review only the uncertain commands, is there
 
 For feedback, we used chatgpt to check our proposal and look for potential problems and inconsistencies within the methods, the validation split, and the choice of datasets. Furthermore, chatgpt was used to help talk through potential solutions to said problems, everything from brainstorming how to refine the main question to whether or not the pipeline is feasible. 
 
+Additionally, ai was used to help write code for eg04d.py file
 
